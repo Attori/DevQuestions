@@ -1,17 +1,26 @@
+using DevQuestions.Application.Questions;
 using DevQuestions.Contracts;
 using Microsoft.AspNetCore.Mvc;
 
-namespace DevQuestions.Presenters;
+namespace DevQuestions.Presenters.Questions;
 
 [ApiController]
 [Route("[controller]")]
 public class QuestionsController : ControllerBase
 {
+    
+    private readonly IQuestionsService _questionsService;
+    public QuestionsController(IQuestionsService questionsService)
+    {
+        _questionsService = questionsService;
+    }
+
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateQuestionDto request,
         CancellationToken cancellationToken)
     {
-        return Ok("Questions created");
+        var questionId = await _questionsService.Create(request, cancellationToken);
+        return Ok(questionId);
     }
 
     [HttpPut]
@@ -27,7 +36,7 @@ public class QuestionsController : ControllerBase
     }
 
     [HttpPut("{questionId:guid}")]
-    public async Task<IActionResult> Update([FromRoute] Guid questionId, UpdateQuestionDto request,
+    public async Task<IActionResult> Update([FromRoute] Guid questionId, [FromBody] UpdateQuestionDto request,
         CancellationToken cancellationToken)
     {
         return Ok("Questions updated");
