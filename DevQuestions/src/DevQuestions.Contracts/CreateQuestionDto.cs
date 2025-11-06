@@ -1,3 +1,3 @@
 ﻿namespace DevQuestions.Contracts;
 
-public record CreateQuestionDto(string Title, string Body, Guid UserId, Guid[] TagIds);
+public record CreateQuestionDto(string Title, string Text, Guid UserId, Guid[] TagIds);
