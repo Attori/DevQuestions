@@ -1,7 +1,14 @@
+using DevQuestion.Infrastructure.Postgres;
+using DevQuestions.Application;
+using DevQuestions.Application.Middlewares;
+
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddProgramDependencies();
 
 var app = builder.Build();
+
+app.UseExceptionMiddleware();
 
 if (app.Environment.IsDevelopment())
 {

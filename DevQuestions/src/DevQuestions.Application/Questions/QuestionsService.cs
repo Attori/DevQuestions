@@ -1,24 +1,33 @@
-﻿using DevQuestions.Contracts;
+﻿using DevQuestions.Application.Extensions;
+using DevQuestions.Application.FullTextSearch;
+using DevQuestions.Application.Questions.Exceptions;
+using DevQuestions.Application.Questions.Fails;
+using DevQuestions.Application.Questions.Fails.Exceptions;
+using DevQuestions.Contracts;
 using DevQuestions.Domain.Questions;
 using FluentValidation;
 using Microsoft.Extensions.Logging;
+using Shared;
 
 namespace DevQuestions.Application.Questions;
 
 public class QuestionsService : IQuestionsService
 {
     private readonly IQuestionsRepository _questionsRepository;
+    private readonly ISearchProvider _searchProvider;
     private readonly ILogger<QuestionsService> _logger;
     private readonly IValidator<CreateQuestionDto> _validator;
 
     public QuestionsService(
         IQuestionsRepository questionsRepository,
         ILogger<QuestionsService> logger,
-        IValidator<QuestionsService> validator, IValidator<CreateQuestionDto> validator1)
+        IValidator<CreateQuestionDto> validator,
+        ISearchProvider searchProvider)
     {
         _questionsRepository = questionsRepository;
         _logger = logger;
-        _validator = validator1;
+        _validator = validator;
+        _searchProvider = searchProvider;
     }
 
     public async Task<Guid> Create(CreateQuestionDto questionDto, CancellationToken cancellationToken)
@@ -28,7 +37,7 @@ public class QuestionsService : IQuestionsService
 
         if (!validationResult.IsValid)
         {
-            throw new ValidationException(validationResult.Errors);
+            throw new QuestionValidationException(validationResult.ToErrors());
         }
 
         // Валидация бизнес логики
@@ -36,9 +45,11 @@ public class QuestionsService : IQuestionsService
         var countOfOpenUserQuestionsCount =
             await _questionsRepository.GetOpenUserQuestionsAsync(questionDto.UserId, cancellationToken);
 
+        var existedQuestion = await _questionsRepository.GetByIdAsync(Guid.Empty, cancellationToken);
+
         if (countOfOpenUserQuestionsCount > 3)
         {
-            throw new Exception("Пользователь не может открыть больше 3х вопросов");
+            throw new ToManyQuestionsException();
         }
 
         var questionId = Guid.NewGuid();
@@ -52,6 +63,8 @@ public class QuestionsService : IQuestionsService
             questionDto.TagIds);
 
         await _questionsRepository.AddAsync(question, cancellationToken);
+
+        await _searchProvider.IndexQuestionsAsync(question);
 
         _logger.LogInformation("Created question with id {QuestionId}", questionId);
 
